@@ -768,6 +768,7 @@ func (s *session) run() {
 	ticker := time.NewTicker(time.Second)
 
 	defer func() {
+		close(stopChan)
 		s.stateTimer.Stop()
 		s.peerTimer.Stop()
 		ticker.Stop()
