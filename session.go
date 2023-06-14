@@ -485,35 +485,50 @@ func (s *session) verifyIgnoreSeqNumTooHighOrLow(msg *Message) MessageRejectErro
 }
 
 func (s *session) verifySelect(msg *Message, checkTooHigh bool, checkTooLow bool) MessageRejectError {
+	s.log.OnEventf("verifySelect message start: %s, checkTooHigh: %v, checkTooLow: %v", msg, checkTooHigh, checkTooLow)
 	if reject := s.checkBeginString(msg); reject != nil {
+		s.log.OnEventf("verifySelect message reject: %s", reject)
 		return reject
 	}
+	s.log.OnEventf("verifySelect message after checkBeginString: %s", msg)
 
 	if reject := s.checkCompID(msg); reject != nil {
+		s.log.OnEventf("verifySelect message reject: %s", reject)
 		return reject
 	}
+	s.log.OnEventf("verifySelect message after checkCompID: %s", msg)
 
 	if reject := s.checkSendingTime(msg); reject != nil {
+		s.log.OnEventf("verifySelect message reject: %s", reject)
 		return reject
 	}
+	s.log.OnEventf("verifySelect message after checkSendingTime: %s", msg)
 
 	if checkTooLow {
 		if reject := s.checkTargetTooLow(msg); reject != nil {
+			s.log.OnEventf("verifySelect message reject: %s", reject)
 			return reject
 		}
 	}
+	s.log.OnEventf("verifySelect message after checkTargetTooLow: %s", msg)
 
 	if checkTooHigh {
 		if reject := s.checkTargetTooHigh(msg); reject != nil {
+			s.log.OnEventf("verifySelect message reject: %s", reject)
 			return reject
 		}
 	}
+	s.log.OnEventf("verifySelect message after checkTargetTooHigh: %s", msg)
 
 	if s.validator != nil {
 		if reject := s.validator.Validate(msg); reject != nil {
+			s.log.OnEventf("verifySelect message reject: %s", reject)
 			return reject
 		}
 	}
+	s.log.OnEventf("verifySelect message after validator.Validate: %s", msg)
+
+	s.log.OnEvent("verifySelect message accept")
 
 	return s.fromCallback(msg)
 }
