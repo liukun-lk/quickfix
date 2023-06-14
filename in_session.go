@@ -12,6 +12,8 @@ type inSession struct{ loggedOn }
 func (state inSession) String() string { return "In Session" }
 
 func (state inSession) FixMsgIn(session *session, msg *Message) sessionState {
+	session.log.OnEventf("FixMsgIn: %s", msg)
+
 	msgType, err := msg.Header.GetBytes(tagMsgType)
 	if err != nil {
 		return handleStateError(session, err)
@@ -36,6 +38,7 @@ func (state inSession) FixMsgIn(session *session, msg *Message) sessionState {
 	case bytes.Equal(msgTypeTestRequest, msgType):
 		return state.handleTestRequest(session, msg)
 	default:
+		session.log.OnEvent("verify incoming message")
 		if err := session.verify(msg); err != nil {
 			return state.processReject(session, msg, err)
 		}
@@ -45,6 +48,7 @@ func (state inSession) FixMsgIn(session *session, msg *Message) sessionState {
 		return handleStateError(session, err)
 	}
 
+	session.log.OnEventf("FixMsgIn state: %s", state)
 	return state
 }
 

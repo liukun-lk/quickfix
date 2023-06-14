@@ -519,6 +519,7 @@ func (s *session) verifySelect(msg *Message, checkTooHigh bool, checkTooLow bool
 }
 
 func (s *session) fromCallback(msg *Message) MessageRejectError {
+	s.log.OnEventf("fromCallback start msg: %s", msg)
 	msgType, err := msg.Header.GetBytes(tagMsgType)
 	if err != nil {
 		return err
@@ -528,6 +529,7 @@ func (s *session) fromCallback(msg *Message) MessageRejectError {
 		return s.application.FromAdmin(msg, s.sessionID)
 	}
 
+	s.log.OnEventf("fromCallback end msg: %s", msg)
 	return s.application.FromApp(msg, s.sessionID)
 }
 
