@@ -19,6 +19,8 @@ func (state inSession) FixMsgIn(session *session, msg *Message) sessionState {
 		return handleStateError(session, err)
 	}
 
+	session.log.OnEventf("msgType, err := msg.Header.GetBytes(tagMsgType) = %s", msgType)
+
 	switch {
 	case bytes.Equal(msgTypeLogon, msgType):
 		if err := session.handleLogon(msg); err != nil {
