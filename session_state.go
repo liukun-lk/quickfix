@@ -83,6 +83,8 @@ func (sm *stateMachine) Incoming(session *session, m fixIn) {
 }
 
 func (sm *stateMachine) fixMsgIn(session *session, m *Message) {
+	fmt.Sprintln("fixMsgIn", session, m)
+	fmt.Sprintln("fixMsgIn sm.Satte", sm.State.String())
 	sm.setState(session, sm.State.FixMsgIn(session, m))
 }
 
