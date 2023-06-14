@@ -761,7 +761,7 @@ func (s *session) run() {
 			s.SendAppMessages(s)
 
 		case fixIn, ok := <-s.messageIn:
-			fmt.Sprintln(fixIn, ok)
+			fmt.Println(fixIn, ok)
 			if !ok {
 				s.Disconnected(s)
 			} else {
