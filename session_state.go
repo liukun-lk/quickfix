@@ -66,12 +66,16 @@ func (sm *stateMachine) Incoming(session *session, m fixIn) {
 		return
 	}
 
+	fmt.Sprintln("Incoming!!!", session, m)
+
 	session.log.OnIncoming(m.bytes.Bytes())
 
 	msg := session.messagePool.Get()
+	fmt.Sprintln("session.messagePool.Get()!!!")
 	if err := ParseMessageWithDataDictionary(msg, m.bytes, session.transportDataDictionary, session.appDataDictionary); err != nil {
 		session.log.OnEventf("Msg Parse Error: %v, %q", err.Error(), m.bytes)
 	} else {
+		fmt.Sprintln(m.receiveTime)
 		msg.ReceiveTime = m.receiveTime
 		sm.fixMsgIn(session, msg)
 	}
