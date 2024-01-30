@@ -317,7 +317,7 @@ func (s *LogonStateTestSuite) TestFixMsgInLogonSeqNumTooHigh() {
 	s.Require().Nil(err)
 	s.MessageType(string(msgTypeLogon), sentMessage)
 
-	s.session.sendQueued()
+	s.session.sendQueued(true)
 	s.MessageType(string(msgTypeResendRequest), s.MockApp.lastToAdmin)
 	s.FieldEquals(tagBeginSeqNo, 1, s.MockApp.lastToAdmin.Body)
 
@@ -357,7 +357,7 @@ func (s *LogonStateTestSuite) TestFixMsgInLogonSeqNumTooLow() {
 	s.Require().Nil(err)
 	s.MessageType(string(msgTypeLogout), sentMessage)
 
-	s.session.sendQueued()
+	s.session.sendQueued(true)
 	s.MessageType(string(msgTypeLogout), s.MockApp.lastToAdmin)
 	s.FieldEquals(tagText, "MsgSeqNum too low, expecting 2 but received 1", s.MockApp.lastToAdmin.Body)
 }
