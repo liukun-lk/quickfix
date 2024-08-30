@@ -176,6 +176,31 @@ func (s *session) sendLogonInReplyTo(setResetSeqNum bool, inReplyTo *Message) er
 	return nil
 }
 
+func (s *session) generateSequenceReset(beginSeqNo int, endSeqNo int, inReplyTo Message) (err error) {
+	sequenceReset := NewMessage()
+	s.fillDefaultHeader(sequenceReset, &inReplyTo)
+
+	sequenceReset.Header.SetField(tagMsgType, FIXString("4"))
+	sequenceReset.Header.SetField(tagMsgSeqNum, FIXInt(beginSeqNo))
+	sequenceReset.Header.SetField(tagPossDupFlag, FIXBoolean(true))
+	sequenceReset.Body.SetField(tagNewSeqNo, FIXInt(endSeqNo))
+	sequenceReset.Body.SetField(tagGapFillFlag, FIXBoolean(true))
+
+	var origSendingTime FIXString
+	if err := sequenceReset.Header.GetField(tagSendingTime, &origSendingTime); err == nil {
+		sequenceReset.Header.SetField(tagOrigSendingTime, origSendingTime)
+	}
+
+	s.application.ToAdmin(sequenceReset, s.sessionID)
+
+	msgBytes := sequenceReset.build()
+
+	s.EnqueueBytesAndSend(msgBytes)
+	s.log.OnEventf("Sent SequenceReset TO: %v", endSeqNo)
+
+	return
+}
+
 func (s *session) buildLogout(reason string) *Message {
 	logout := NewMessage()
 	logout.Header.SetField(tagMsgType, FIXString("5"))
