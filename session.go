@@ -477,6 +477,12 @@ func (s *session) handleLogon(msg *Message) error {
 		}
 	}
 
+	nextSenderMsgNumAtLogonReceived := s.store.NextSenderMsgSeqNum()
+
+	if err := s.verifyIgnoreSeqNumTooHigh(msg); err != nil {
+		return err
+	}
+
 	var resetSeqNumFlag FIXBoolean
 	if err := msg.Body.GetField(tagResetSeqNumFlag, &resetSeqNumFlag); err == nil {
 		if resetSeqNumFlag {
@@ -491,10 +497,6 @@ func (s *session) handleLogon(msg *Message) error {
 		if err := s.store.Reset(); err != nil {
 			return err
 		}
-	}
-
-	if err := s.verifyIgnoreSeqNumTooHigh(msg); err != nil {
-		return err
 	}
 
 	if !s.InitiateLogon {
