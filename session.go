@@ -500,7 +500,7 @@ func (s *session) handleLogon(msg *Message) error {
 		}
 	}
 
-	// Verify seq num too high but dont check against app implementation since we just did that. 
+	// Verify seq num too high but dont check against app implementation since we just did that.
 	// Don't need to double check.
 	if err := s.verifySelect(msg, false, true, false); err != nil {
 		return err
