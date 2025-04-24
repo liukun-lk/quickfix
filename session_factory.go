@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/quickfixgo/quickfix/config"
@@ -67,7 +68,10 @@ func (f sessionFactory) createSession(
 func (f sessionFactory) newSession(
 	sessionID SessionID, storeFactory MessageStoreFactory, settings *SessionSettings, logFactory LogFactory,
 	application Application) (s *session, err error) {
-	s = &session{sessionID: sessionID}
+	s = &session{
+		sessionID: sessionID,
+		stopOnce:  sync.Once{},
+	}
 
 	var validatorSettings = defaultValidatorSettings
 	if settings.HasSetting(config.ValidateFieldsOutOfOrder) {
@@ -433,7 +437,7 @@ func (f sessionFactory) buildHeartBtIntSettings(session *session, settings *Sess
 			return
 		}
 	}
-	
+
 	if session.HeartBtIntOverride || mustProvide {
 		var heartBtInt int
 		if heartBtInt, err = settings.IntSetting(config.HeartBtInt); err != nil {
