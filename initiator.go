@@ -10,7 +10,7 @@ import (
 	"golang.org/x/net/proxy"
 )
 
-//Initiator initiates connections and processes messages for all sessions.
+// Initiator initiates connections and processes messages for all sessions.
 type Initiator struct {
 	app             Application
 	settings        *Settings
@@ -24,7 +24,7 @@ type Initiator struct {
 	sessionFactory
 }
 
-//Start Initiator.
+// Start Initiator.
 func (i *Initiator) Start() (err error) {
 	i.stopChan = make(chan interface{})
 
@@ -50,7 +50,7 @@ func (i *Initiator) Start() (err error) {
 	return
 }
 
-//Stop Initiator.
+// Stop Initiator.
 func (i *Initiator) Stop() {
 	select {
 	case <-i.stopChan:
@@ -62,7 +62,25 @@ func (i *Initiator) Stop() {
 	i.wg.Wait()
 }
 
-//NewInitiator creates and initializes a new Initiator.
+func (i *Initiator) IsConnectedAndLoggedOn(sessionID SessionID) bool {
+	session, ok := i.sessions[sessionID]
+	if !ok {
+		return false
+	}
+
+	return session.IsConnected() && session.IsLoggedOn()
+}
+
+func (i *Initiator) SessionState(sessionID SessionID) string {
+	session, ok := i.sessions[sessionID]
+	if !ok {
+		return SessionStateUnknown
+	}
+
+	return session.State.String()
+}
+
+// NewInitiator creates and initializes a new Initiator.
 func NewInitiator(app Application, storeFactory MessageStoreFactory, appSettings *Settings, logFactory LogFactory) (*Initiator, error) {
 	i := &Initiator{
 		app:             app,
@@ -92,7 +110,7 @@ func NewInitiator(app Application, storeFactory MessageStoreFactory, appSettings
 	return i, nil
 }
 
-//waitForInSessionTime returns true if the session is in session, false if the handler should stop
+// waitForInSessionTime returns true if the session is in session, false if the handler should stop
 func (i *Initiator) waitForInSessionTime(session *session) bool {
 	inSessionTime := make(chan interface{})
 	go func() {
@@ -109,7 +127,7 @@ func (i *Initiator) waitForInSessionTime(session *session) bool {
 	return true
 }
 
-//waitForReconnectInterval returns true if a reconnect should be re-attempted, false if handler should stop
+// waitForReconnectInterval returns true if a reconnect should be re-attempted, false if handler should stop
 func (i *Initiator) waitForReconnectInterval(reconnectInterval time.Duration) bool {
 	select {
 	case <-time.After(reconnectInterval):
@@ -134,6 +152,7 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 	}()
 
 	connectionAttempt := 0
+	useLastLogon := session.lastLogonData != nil
 
 	for {
 		if !i.waitForInSessionTime(session) {
@@ -143,9 +162,12 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 		var disconnected chan interface{}
 		var msgIn chan fixIn
 		var msgOut chan []byte
-
 		address := session.SocketConnectAddress[connectionAttempt%len(session.SocketConnectAddress)]
-		session.log.OnEventf("Connecting to: %v", address)
+		if useLastLogon && session.lastLogonData != nil {
+			address = session.lastLogonData.Addr
+		}
+		session.log.OnEventf("Session: %+v Connecting to: %v, useLastLogon: %v", session.sessionID, address, useLastLogon)
+		session.lastConnectData = &EventLogon{Addr: address, TS: time.Now().Unix()}
 
 		netConn, err := dialer.Dial("tcp", address)
 		if err != nil {
@@ -193,7 +215,13 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 		}
 
 	reconnect:
-		connectionAttempt++
+		if !useLastLogon {
+			connectionAttempt++
+		}
+		if session.lastLogonData != nil {
+			useLastLogon = !useLastLogon
+		}
+
 		session.log.OnEventf("Reconnecting in %v", session.ReconnectInterval)
 		if !i.waitForReconnectInterval(session.ReconnectInterval) {
 			return

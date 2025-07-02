@@ -9,7 +9,7 @@ import (
 
 type inSession struct{ loggedOn }
 
-func (state inSession) String() string { return "In Session" }
+func (state inSession) String() string { return SessionStateInSession }
 
 func (state inSession) FixMsgIn(session *session, msg *Message) sessionState {
 	session.log.OnEventf("FixMsgIn: %s", msg)
@@ -244,8 +244,9 @@ func (state inSession) resendMessages(session *session, beginSeqNo, endSeqNo int
 		}
 
 		session.log.OnEventf("Resending Message: %v", sentMessageSeqNum)
-		msgBytes = msg.build()
-		session.sendBytes(msgBytes)
+
+		msgBytes = msg.buildWithBodyBytes(msg.bodyBytes) // workaround for maintaining repeating group field order
+		session.EnqueueBytesAndSend(msgBytes)
 
 		seqNum = sentMessageSeqNum + 1
 		nextSeqNum = seqNum
@@ -388,7 +389,7 @@ func (state *inSession) generateSequenceReset(session *session, beginSeqNo int, 
 
 	msgBytes := sequenceReset.build()
 
-	session.sendBytes(msgBytes)
+	session.EnqueueBytesAndSend(msgBytes)
 	session.log.OnEventf("Sent SequenceReset TO: %v", endSeqNo)
 
 	return
