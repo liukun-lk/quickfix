@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"io"
+	"log"
 	"net"
 	"runtime/debug"
 	"strconv"
@@ -14,7 +15,7 @@ import (
 	"github.com/quickfixgo/quickfix/config"
 )
 
-//Acceptor accepts connections from FIX clients and manages the associated sessions.
+// Acceptor accepts connections from FIX clients and manages the associated sessions.
 type Acceptor struct {
 	app                   Application
 	settings              *Settings
@@ -41,7 +42,7 @@ type ConnectionValidator interface {
 	Validate(netConn net.Conn, session SessionID) error
 }
 
-//Start accepting connections.
+// Start accepting connections.
 func (a *Acceptor) Start() error {
 	socketAcceptHost := ""
 	if a.settings.GlobalSettings().HasSetting(config.SocketAcceptHost) {
@@ -106,7 +107,7 @@ func (a *Acceptor) Start() error {
 	return nil
 }
 
-//Stop logs out existing sessions, close their connections, and stop accepting new connections.
+// Stop logs out existing sessions, close their connections, and stop accepting new connections.
 func (a *Acceptor) Stop() {
 	defer func() {
 		_ = recover() // suppress sending on closed channel error
@@ -123,13 +124,13 @@ func (a *Acceptor) Stop() {
 	a.sessionGroup.Wait()
 }
 
-//Get remote IP address for a given session.
+// Get remote IP address for a given session.
 func (a *Acceptor) RemoteAddr(sessionID SessionID) (net.Addr, bool) {
 	addr, ok := a.sessionAddr[sessionID]
 	return addr, ok
 }
 
-//NewAcceptor creates and initializes a new Acceptor.
+// NewAcceptor creates and initializes a new Acceptor.
 func NewAcceptor(app Application, storeFactory MessageStoreFactory, settings *Settings, logFactory LogFactory) (a *Acceptor, err error) {
 	a = &Acceptor{
 		app:          app,
@@ -289,6 +290,7 @@ func (a *Acceptor) handleConnection(netConn net.Conn) {
 		sessID.Qualifier = strconv.Itoa(a.dynamicQualifierCount)
 	}
 	session, ok := a.sessions[sessID]
+	log.Printf("handleConnection: %v, %v, sessions: %v", sessID.String(), ok, a.sessions)
 	if !ok {
 		if !a.dynamicSessions {
 			a.globalLog.OnEventf("Session %v not found for incoming message: %s", sessID, msgBytes)
@@ -330,6 +332,7 @@ LOOP:
 	for {
 		select {
 		case session, ok := <-a.dynamicSessionChan:
+			log.Printf("dynamicSessionChan: %v, %v", session.sessionID.String(), ok)
 			if !ok {
 				for _, oldSession := range sessions {
 					oldSession.stop()
@@ -340,7 +343,9 @@ LOOP:
 			sessionID := id
 			sessions[sessionID] = session
 			go func() {
+				log.Printf("session.run: %v", session.sessionID.String())
 				session.run()
+				log.Printf("UnregisterSession: %v, sessions: %v", session.sessionID.String(), sessions)
 				err := UnregisterSession(session.sessionID)
 				if err != nil {
 					a.globalLog.OnEventf("Unregister dynamic session %v failed: %v", session.sessionID, err)
@@ -375,7 +380,8 @@ LOOP:
 // Use it when you need a custom authentication logic that includes lower level interactions,
 // like mTLS auth or IP whitelistening.
 // To remove a previously set validator call it with a nil value:
-// 	a.SetConnectionValidator(nil)
+//
+//	a.SetConnectionValidator(nil)
 func (a *Acceptor) SetConnectionValidator(validator ConnectionValidator) {
 	a.connectionValidator = validator
 }

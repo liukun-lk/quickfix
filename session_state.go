@@ -55,6 +55,7 @@ func (sm *stateMachine) Stopped() bool {
 }
 
 func (sm *stateMachine) Disconnected(session *session) {
+	fmt.Println("Disconnected!!!", session, sm.State.String())
 	if sm.IsConnected() {
 		sm.setState(session, latentState{})
 	}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -788,13 +789,15 @@ func (s *session) run() {
 		select {
 
 		case msg := <-s.admin:
+			log.Printf("session.run: %v, msg: %v", s.sessionID.String(), msg)
 			s.onAdmin(msg)
 
 		case <-s.messageEvent:
+			log.Printf("session.run: %v, messageEvent", s.sessionID.String())
 			s.SendAppMessages(s)
 
 		case fixIn, ok := <-s.messageIn:
-			fmt.Println(fixIn, ok)
+			log.Printf("session.run: %v, messageIn: %v, %v, %v", s.sessionID.String(), fixIn, ok, s.State.String())
 			if !ok {
 				s.Disconnected(s)
 			} else {

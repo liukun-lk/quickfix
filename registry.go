@@ -2,6 +2,7 @@ package quickfix
 
 import (
 	"errors"
+	"log"
 	"sync"
 )
 
@@ -10,12 +11,12 @@ var sessions = make(map[SessionID]*session)
 var errDuplicateSessionID = errors.New("Duplicate SessionID")
 var errUnknownSession = errors.New("Unknown session")
 
-//Messagable is a Message or something that can be converted to a Message
+// Messagable is a Message or something that can be converted to a Message
 type Messagable interface {
 	ToMessage() *Message
 }
 
-//Send determines the session to send Messagable using header fields BeginString, TargetCompID, SenderCompID
+// Send determines the session to send Messagable using header fields BeginString, TargetCompID, SenderCompID
 func Send(m Messagable) (err error) {
 	msg := m.ToMessage()
 	var beginString FIXString
@@ -48,7 +49,7 @@ func Send(m Messagable) (err error) {
 	return SendToTarget(msg, sessionID)
 }
 
-//SendToTarget sends a message based on the sessionID. Convenient for use in FromApp since it provides a session ID for incoming messages
+// SendToTarget sends a message based on the sessionID. Convenient for use in FromApp since it provides a session ID for incoming messages
 func SendToTarget(m Messagable, sessionID SessionID) error {
 	msg := m.ToMessage()
 	session, ok := lookupSession(sessionID)
@@ -59,7 +60,7 @@ func SendToTarget(m Messagable, sessionID SessionID) error {
 	return session.queueForSend(msg)
 }
 
-//UnregisterSession removes a session from the set of known sessions
+// UnregisterSession removes a session from the set of known sessions
 func UnregisterSession(sessionID SessionID) error {
 	sessionsLock.Lock()
 	defer sessionsLock.Unlock()
@@ -76,6 +77,7 @@ func registerSession(s *session) error {
 	sessionsLock.Lock()
 	defer sessionsLock.Unlock()
 
+	log.Printf("registerSession: %v, %v, sessions: %v", s.sessionID.String(), s.State.String(), sessions)
 	if _, ok := sessions[s.sessionID]; ok {
 		return errDuplicateSessionID
 	}
