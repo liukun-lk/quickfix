@@ -167,6 +167,14 @@ func (store *nutsDbStore) SaveMessage(seqNum int, msg []byte) error {
 	})
 }
 
+func (store *nutsDbStore) SaveMessageAndIncrNextSenderMsgSeqNum(seqNum int, msg []byte) error {
+	err := store.SaveMessage(seqNum, msg)
+	if err != nil {
+		return err
+	}
+	return store.IncrNextSenderMsgSeqNum()
+}
+
 func (store *nutsDbStore) GetMessages(beginSeqNum, endSeqNum int) ([][]byte, error) {
 	var msgs [][]byte
 	store.db.View(func(tx *nutsdb.Tx) error {
