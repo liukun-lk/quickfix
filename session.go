@@ -63,6 +63,9 @@ type session struct {
 	appDataDictionary       *datadictionary.DataDictionary
 
 	timestampPrecision TimestampPrecision
+
+	lastConnectData *EventLogon
+	lastLogonData   *EventLogon
 }
 
 func (s *session) logError(err error) {
@@ -560,6 +563,11 @@ func (s *session) handleLogon(msg *Message) error {
 
 	s.peerTimer.Reset(time.Duration(float64(1.2) * float64(s.HeartBtInt)))
 	s.application.OnLogon(s.sessionID)
+
+	if s.lastConnectData != nil {
+		s.application.OnEvent(s.sessionID, EventTypeLogon, s.lastConnectData)
+		s.lastLogonData = s.lastConnectData
+	}
 
 	// Evaluate tag 789 to see if we end up with an implied gapfill/resend.
 	if s.EnableNextExpectedMsgSeqNum && !msg.Body.Has(tagResetSeqNumFlag) {

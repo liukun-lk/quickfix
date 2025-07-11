@@ -157,6 +157,7 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 	}()
 
 	connectionAttempt := 0
+	useLastLogon := session.lastLogonData != nil
 
 	for {
 		if !i.waitForInSessionTime(session) {
@@ -181,7 +182,11 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 		var msgOut chan []byte
 
 		address := session.SocketConnectAddress[connectionAttempt%len(session.SocketConnectAddress)]
-		session.log.OnEventf("Connecting to: %v", address)
+		if useLastLogon && session.lastLogonData != nil {
+			address = session.lastLogonData.Addr
+		}
+		session.log.OnEventf("Session: %+v Connecting to: %v, useLastLogon: %v", session.sessionID, address, useLastLogon)
+		session.lastConnectData = &EventLogon{Addr: address, TS: time.Now().Unix()}
 
 		netConn, err := dialer.DialContext(ctx, "tcp", address)
 		if err != nil {
@@ -235,7 +240,12 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 	reconnect:
 		cancel()
 
-		connectionAttempt++
+		if !useLastLogon {
+			connectionAttempt++
+		}
+		if session.lastLogonData != nil {
+			useLastLogon = !useLastLogon
+		}
 		session.log.OnEventf("Reconnecting in %v", session.ReconnectInterval)
 		if !i.waitForReconnectInterval(session.ReconnectInterval) {
 			return

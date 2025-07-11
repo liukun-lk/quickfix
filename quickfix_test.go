@@ -88,6 +88,9 @@ type MockApp struct {
 func (e *MockApp) OnCreate(_ SessionID) {
 }
 
+func (e *MockApp) OnEvent(_ SessionID, _ EventType, _ interface{}) {
+}
+
 func (e *MockApp) OnLogon(_ SessionID) {
 	e.Called()
 }
