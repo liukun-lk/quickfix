@@ -16,6 +16,7 @@
 package quickfix
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -385,5 +386,202 @@ func TestSettings_SessionIDFromSessionSettings(t *testing.T) {
 		if tc.expectedSessionID != actualSessionID {
 			t.Errorf("Expected %v, got %v", tc.expectedSessionID, actualSessionID)
 		}
+	}
+}
+
+func TestSettings_ParseSettingsMapConfig(t *testing.T) {
+	configMap := map[string]map[string]string{}
+	configMap[`default`] = map[string]string{
+		`SocketConnectHost`: "127.0.0.1",
+		`SocketConnectPort`: "5001",
+		`HeartBtInt`:        "5",
+		`SenderCompID`:      "TW",
+		`TargetCompID`:      "ISLD",
+		`ResetOnLogon`:      "Y",
+		`FileLogPath`:       "tmp",
+	}
+	configMap[`session`] = map[string]string{
+		`BeginString`: "FIX.4.2",
+	}
+
+	s, err := ParseMapSettings(configMap)
+	assert.Nil(t, err)
+	sessionSettings := s.SessionSettings()[SessionID{BeginString: "FIX.4.3", SenderCompID: "TW", TargetCompID: "ISLD"}]
+	assert.Nil(t, sessionSettings)
+
+	sessionSettings = s.SessionSettings()[SessionID{BeginString: "FIX.4.2", SenderCompID: "TW", TargetCompID: "ISLD"}]
+	socketConnectHostVal, err := sessionSettings.Setting("SocketConnectHost")
+	assert.Nil(t, err)
+	assert.Equal(t, `127.0.0.1`, socketConnectHostVal)
+	socketConnectPortVal, err := sessionSettings.Setting("SocketConnectPort")
+	assert.Nil(t, err)
+	assert.Equal(t, `5001`, socketConnectPortVal)
+
+	fileLogPathVal, err := sessionSettings.Setting("FileLogPath")
+	assert.Nil(t, err)
+	assert.Equal(t, `tmp`, fileLogPathVal)
+
+	beginStringVal, err := sessionSettings.Setting("BeginString")
+	assert.Nil(t, err)
+	assert.Equal(t, `FIX.4.2`, beginStringVal)
+
+	globalLogPath, err := s.GlobalSettings().Setting(config.FileLogPath)
+	assert.Nil(t, err)
+	assert.Equal(t, `tmp`, globalLogPath)
+}
+
+func TestParseMapSettingsV2(t *testing.T) {
+	type args struct {
+		globalConfig   map[string]string
+		sessionConfigs []map[string]string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *Settings
+		wantErr bool
+	}{
+		{
+			name: "correct globalConfig, correct one sessionConfig",
+			args: args{
+				globalConfig: map[string]string{
+					"HeartBtInt": "30",
+				},
+				sessionConfigs: []map[string]string{
+					{
+						"SenderCompID": "TestSender",
+						"TargetCompID": "TestTarget",
+						"BeginString":  BeginStringFIX44,
+					},
+				},
+			},
+			want: &Settings{
+				globalSettings: &SessionSettings{
+					settings: map[string][]byte{
+						"HeartBtInt": []byte("30"),
+					},
+				},
+				sessionSettings: map[SessionID]*SessionSettings{
+					{
+						SenderCompID: "TestSender",
+						TargetCompID: "TestTarget",
+						BeginString:  BeginStringFIX44,
+					}: {
+						settings: map[string][]byte{
+							"SenderCompID": []byte("TestSender"),
+							"TargetCompID": []byte("TestTarget"),
+							"BeginString":  []byte(BeginStringFIX44),
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "correct globalConfig, correct multiple sessionConfigs",
+			args: args{
+				globalConfig: map[string]string{
+					"HeartBtInt": "30",
+				},
+				sessionConfigs: []map[string]string{
+					{
+						"SenderCompID": "TestSender1",
+						"TargetCompID": "TestTarget1",
+						"BeginString":  BeginStringFIX44,
+					},
+					{
+						"SenderCompID": "TestSender2",
+						"TargetCompID": "TestTarget2",
+						"BeginString":  BeginStringFIX42,
+					},
+				},
+			},
+			want: &Settings{
+				globalSettings: &SessionSettings{
+					settings: map[string][]byte{
+						"HeartBtInt": []byte("30"),
+					},
+				},
+				sessionSettings: map[SessionID]*SessionSettings{
+					{
+						SenderCompID: "TestSender1",
+						TargetCompID: "TestTarget1",
+						BeginString:  BeginStringFIX44,
+					}: {
+						settings: map[string][]byte{
+							"SenderCompID": []byte("TestSender1"),
+							"TargetCompID": []byte("TestTarget1"),
+							"BeginString":  []byte(BeginStringFIX44),
+						},
+					},
+					{
+						SenderCompID: "TestSender2",
+						TargetCompID: "TestTarget2",
+						BeginString:  BeginStringFIX42,
+					}: {
+						settings: map[string][]byte{
+							"SenderCompID": []byte("TestSender2"),
+							"TargetCompID": []byte("TestTarget2"),
+							"BeginString":  []byte(BeginStringFIX42),
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "correct globalConfig, nil sessionConfigs",
+			args: args{
+				globalConfig: map[string]string{
+					"HeartBtInt": "30",
+				},
+				sessionConfigs: nil,
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "nil globalConfig, correct sessionConfigs",
+			args: args{
+				globalConfig: nil,
+				sessionConfigs: []map[string]string{
+					{
+						"SenderCompID": "TestSender",
+						"TargetCompID": "TestTarget",
+						"BeginString":  BeginStringFIX44,
+					},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "correct globalConfig, invalid sessionConfigs",
+			args: args{
+				globalConfig: map[string]string{
+					"HeartBtInt": "30",
+				},
+				sessionConfigs: []map[string]string{
+					{
+						"SenderCompID": "TestSender",
+						"TargetCompID": "TestTarget",
+					},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseMapSettingsV2(tt.args.globalConfig, tt.args.sessionConfigs)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseMapSettingsV2() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseMapSettingsV2() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
