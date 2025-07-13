@@ -2,7 +2,6 @@ package gorm
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/pkg/errors"
@@ -21,7 +20,7 @@ func NewGormStoreFactory(settings *quickfix.Settings, db *gormio.DB) quickfix.Me
 	return gormStoreFactory{settings: settings, db: db}
 }
 
-type gromStore struct {
+type gormStore struct {
 	sessionID quickfix.SessionID
 	cache     quickfix.MessageStore
 	db        *gormio.DB
@@ -34,7 +33,7 @@ func (f gormStoreFactory) Create(sessionID quickfix.SessionID) (msgStore quickfi
 			return
 		}
 	}
-	log.Println("f.settings.SessionSettings()", f.settings.SessionSettings())
+
 	_, ok := f.settings.SessionSettings()[sessionID]
 	if !ok && !dynamicSessions {
 		return nil, fmt.Errorf("unknown session: %v", sessionID)
@@ -46,7 +45,7 @@ func (f gormStoreFactory) Create(sessionID quickfix.SessionID) (msgStore quickfi
 		return
 	}
 
-	store := &gromStore{
+	store := &gormStore{
 		sessionID: sessionID,
 		cache:     memStore,
 		db:        f.db,
@@ -67,7 +66,7 @@ func (f gormStoreFactory) Create(sessionID quickfix.SessionID) (msgStore quickfi
 
 }
 
-func (store *gromStore) initTables() (err error) {
+func (store *gormStore) initTables() (err error) {
 	if !store.db.Migrator().HasTable("sessions") {
 		err = store.db.Migrator().CreateTable(&GormSessions{})
 		if err != nil {
@@ -84,7 +83,7 @@ func (store *gromStore) initTables() (err error) {
 }
 
 // Reset deletes the store records and sets the seqnums back to 1.
-func (store *gromStore) Reset() error {
+func (store *gormStore) Reset() error {
 	s := store.sessionID
 	err := store.db.Exec(`DELETE FROM messages
 	WHERE beginstring=? AND session_qualifier=?
@@ -111,14 +110,14 @@ func (store *gromStore) Reset() error {
 }
 
 // Refresh reloads the store from the database.
-func (store *gromStore) Refresh() error {
+func (store *gormStore) Refresh() error {
 	if err := store.cache.Reset(); err != nil {
 		return err
 	}
 	return store.populateCache()
 }
 
-func (store *gromStore) populateCache() error {
+func (store *gormStore) populateCache() error {
 	dest := GormSessions{}
 	s := store.sessionID
 	err := store.db.Table(`sessions`).Where(`beginstring=? AND session_qualifier=?
@@ -153,17 +152,17 @@ func (store *gromStore) populateCache() error {
 }
 
 // NextSenderMsgSeqNum returns the next MsgSeqNum that will be sent.
-func (store *gromStore) NextSenderMsgSeqNum() int {
+func (store *gormStore) NextSenderMsgSeqNum() int {
 	return store.cache.NextSenderMsgSeqNum()
 }
 
 // NextTargetMsgSeqNum returns the next MsgSeqNum that should be received.
-func (store *gromStore) NextTargetMsgSeqNum() int {
+func (store *gormStore) NextTargetMsgSeqNum() int {
 	return store.cache.NextTargetMsgSeqNum()
 }
 
 // SetNextSenderMsgSeqNum sets the next MsgSeqNum that will be sent.
-func (store *gromStore) SetNextSenderMsgSeqNum(next int) error {
+func (store *gormStore) SetNextSenderMsgSeqNum(next int) error {
 	s := store.sessionID
 
 	err := store.db.Table(`sessions`).Where(`beginstring=? AND session_qualifier=?
@@ -178,7 +177,7 @@ func (store *gromStore) SetNextSenderMsgSeqNum(next int) error {
 }
 
 // SetNextTargetMsgSeqNum sets the next MsgSeqNum that should be received.
-func (store *gromStore) SetNextTargetMsgSeqNum(next int) error {
+func (store *gormStore) SetNextTargetMsgSeqNum(next int) error {
 	s := store.sessionID
 
 	err := store.db.Table(`sessions`).Where(`beginstring=? AND session_qualifier=?
@@ -193,7 +192,7 @@ func (store *gromStore) SetNextTargetMsgSeqNum(next int) error {
 }
 
 // IncrNextSenderMsgSeqNum increments the next MsgSeqNum that will be sent.
-func (store *gromStore) IncrNextSenderMsgSeqNum() error {
+func (store *gormStore) IncrNextSenderMsgSeqNum() error {
 	if err := store.cache.IncrNextSenderMsgSeqNum(); err != nil {
 		return errors.Wrap(err, "cache incr next")
 	}
@@ -201,7 +200,7 @@ func (store *gromStore) IncrNextSenderMsgSeqNum() error {
 }
 
 // IncrNextTargetMsgSeqNum increments the next MsgSeqNum that should be received.
-func (store *gromStore) IncrNextTargetMsgSeqNum() error {
+func (store *gormStore) IncrNextTargetMsgSeqNum() error {
 	if err := store.cache.IncrNextTargetMsgSeqNum(); err != nil {
 		return errors.Wrap(err, "cache incr next")
 	}
@@ -209,15 +208,15 @@ func (store *gromStore) IncrNextTargetMsgSeqNum() error {
 }
 
 // CreationTime returns the creation time of the store.
-func (store *gromStore) CreationTime() time.Time {
+func (store *gormStore) CreationTime() time.Time {
 	return store.cache.CreationTime()
 }
 
 // SetCreationTime is a no-op for GormStore.
-func (store *gromStore) SetCreationTime(_ time.Time) {
+func (store *gormStore) SetCreationTime(_ time.Time) {
 }
 
-func (store *gromStore) SaveMessage(seqNum int, msg []byte) error {
+func (store *gormStore) SaveMessage(seqNum int, msg []byte) error {
 	s := store.sessionID
 	err := store.db.Exec(`INSERT INTO messages (
 		msgseqnum, message,
@@ -245,7 +244,7 @@ func (store *gromStore) SaveMessage(seqNum int, msg []byte) error {
 	return err
 }
 
-func (store *gromStore) SaveMessageAndIncrNextSenderMsgSeqNum(seqNum int, msg []byte) error {
+func (store *gormStore) SaveMessageAndIncrNextSenderMsgSeqNum(seqNum int, msg []byte) error {
 	s := store.sessionID
 	tx := store.db.Begin()
 	if tx.Error != nil {
@@ -286,7 +285,7 @@ func (store *gromStore) SaveMessageAndIncrNextSenderMsgSeqNum(seqNum int, msg []
 	return store.cache.SetNextSenderMsgSeqNum(next)
 }
 
-func (store *gromStore) IterateMessages(beginSeqNum, endSeqNum int, cb func([]byte) error) error {
+func (store *gormStore) IterateMessages(beginSeqNum, endSeqNum int, cb func([]byte) error) error {
 	s := store.sessionID
 	rows, err := store.db.Raw(`SELECT message FROM messages
 	WHERE beginstring=? AND session_qualifier=?
@@ -314,7 +313,7 @@ func (store *gromStore) IterateMessages(beginSeqNum, endSeqNum int, cb func([]by
 	return rows.Err()
 }
 
-func (store *gromStore) GetMessages(beginSeqNum, endSeqNum int) ([][]byte, error) {
+func (store *gormStore) GetMessages(beginSeqNum, endSeqNum int) ([][]byte, error) {
 	var msgs [][]byte
 	err := store.IterateMessages(beginSeqNum, endSeqNum, func(msg []byte) error {
 		msgs = append(msgs, msg)
@@ -324,7 +323,7 @@ func (store *gromStore) GetMessages(beginSeqNum, endSeqNum int) ([][]byte, error
 }
 
 // Close closes the store's database connection
-func (store *gromStore) Close() error {
+func (store *gormStore) Close() error {
 	if store.db != nil {
 		db, err := store.db.DB()
 		if err != nil {
