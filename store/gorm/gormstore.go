@@ -68,13 +68,13 @@ func (f gormStoreFactory) Create(sessionID quickfix.SessionID) (msgStore quickfi
 
 func (store *gormStore) initTables() (err error) {
 	if !store.db.Migrator().HasTable("sessions") {
-		err = store.db.Migrator().CreateTable(&GormSessions{})
+		err = store.db.Migrator().CreateTable(&Sessions{})
 		if err != nil {
 			return errors.Wrap(err, "gromStore.initTables err")
 		}
 	}
 	if !store.db.Migrator().HasTable("messages") {
-		err = store.db.Migrator().CreateTable(&GormMessages{})
+		err = store.db.Migrator().CreateTable(&Messages{})
 		if err != nil {
 			return errors.Wrap(err, "gromStore.initTables err")
 		}
@@ -118,7 +118,7 @@ func (store *gormStore) Refresh() error {
 }
 
 func (store *gormStore) populateCache() error {
-	dest := GormSessions{}
+	dest := Sessions{}
 	s := store.sessionID
 	err := store.db.Table(`sessions`).Where(`beginstring=? AND session_qualifier=?
 	  AND sendercompid=? AND sendersubid=? AND senderlocid=?

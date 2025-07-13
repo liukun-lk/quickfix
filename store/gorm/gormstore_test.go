@@ -30,7 +30,7 @@ func (suite *GormStoreTestSuite) SetupTest() {
 	require.Nil(suite.T(), err)
 
 	// 创建表
-	err = suite.db.AutoMigrate(&GormSessions{}, &GormMessages{})
+	err = suite.db.AutoMigrate(&Sessions{}, &Messages{})
 	require.Nil(suite.T(), err)
 
 	// 创建 store
@@ -76,7 +76,7 @@ func TestGormStoreSpecificFeatures(t *testing.T) {
 	require.NoError(t, err)
 
 	// 创建表
-	err = db.AutoMigrate(&GormSessions{}, &GormMessages{})
+	err = db.AutoMigrate(&Sessions{}, &Messages{})
 	require.NoError(t, err)
 
 	sessionID := quickfix.SessionID{BeginString: "FIX.4.2", TargetCompID: "IB", SenderCompID: "LB"}
