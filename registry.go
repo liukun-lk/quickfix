@@ -48,7 +48,18 @@ func Send(m Messagable) (err error) {
 		return err
 	}
 
-	sessionID := SessionID{BeginString: string(beginString), TargetCompID: string(targetCompID), SenderCompID: string(senderCompID)}
+	var senderSubID FIXString
+	msg.Header.GetField(tagSenderSubID, &senderSubID)
+
+	var targetSubID FIXString
+	msg.Header.GetField(tagTargetSubID, &targetSubID)
+
+	if len(senderSubID) > 0 && len(targetSubID) > 0 {
+		sessionID := SessionID{BeginString: beginString.String(), TargetCompID: targetCompID.String(), SenderCompID: senderCompID.String(), SenderSubID: senderSubID.String(), TargetSubID: targetSubID.String()}
+		return SendToTarget(msg, sessionID)
+	}
+
+	sessionID := SessionID{BeginString: beginString.String(), TargetCompID: targetCompID.String(), SenderCompID: senderCompID.String()}
 
 	return SendToTarget(msg, sessionID)
 }
