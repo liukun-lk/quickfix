@@ -1159,4 +1159,15 @@ const (
 	//  - Y
 	//  - N
 	EnableNextExpectedMsgSeqNum string = "EnableNextExpectedMsgSeqNum"
+
+	// SendRatePerSecond defines the maximum number of messages that can be sent per second.
+	// This helps prevent overwhelming the counterparty and provides rate limiting capability.
+	//
+	// Required: No
+	//
+	// Default: Unlimited
+	//
+	// Valid Values:
+	//  - Any positive integer
+	SendRatePerSecond string = "SendRatePerSecond"
 )

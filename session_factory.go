@@ -399,6 +399,14 @@ func (f sessionFactory) newSession(
 		s.DisableMessagePersist = !persistMessages
 	}
 
+	var sendRatePerSecond int
+	if settings.HasSetting(config.SendRatePerSecond) {
+		if sendRatePerSecond, err = settings.IntSetting(config.SendRatePerSecond); err != nil {
+			return
+		}
+		s.LimitBucket = internal.New(time.Second, uint64(sendRatePerSecond))
+	}
+
 	if f.BuildInitiators {
 		if err = f.buildInitiatorSettings(s, settings); err != nil {
 			return

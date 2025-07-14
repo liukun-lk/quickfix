@@ -408,6 +408,9 @@ func (s *session) persist(seqNum int, msgBytes []byte) error {
 
 func (s *session) sendQueued(blockUntilSent bool) {
 	for i, msgBytes := range s.toSend {
+		if s.LimitBucket != nil {
+			s.LimitBucket.Wait()
+		}
 		if !s.sendBytes(msgBytes, blockUntilSent) {
 			s.toSend = s.toSend[i:]
 			s.notifyMessageOut()
