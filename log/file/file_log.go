@@ -113,6 +113,6 @@ func (f fileLogFactory) CreateSessionLog(sessionID quickfix.SessionID) (quickfix
 		return nil, fmt.Errorf("logger not defined for %v", sessionID)
 	}
 
-	prefix := sessionIDFilenamePrefix(sessionID)
+	prefix := SessionIDFilenamePrefix(sessionID)
 	return newFileLog(prefix, logPath)
 }

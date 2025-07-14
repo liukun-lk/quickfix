@@ -23,7 +23,7 @@ import (
 	"github.com/quickfixgo/quickfix"
 )
 
-func sessionIDFilenamePrefix(s quickfix.SessionID) string {
+func SessionIDFilenamePrefix(s quickfix.SessionID) string {
 	sender := []string{s.SenderCompID}
 	if s.SenderSubID != "" {
 		sender = append(sender, s.SenderSubID)
