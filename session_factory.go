@@ -427,6 +427,8 @@ func (f sessionFactory) newSession(
 	s.messageEvent = make(chan bool, 1)
 	s.admin = make(chan interface{})
 	s.application = application
+	s.stateMachine = stateMachine{State: latentState{}}
+
 	return
 }
 

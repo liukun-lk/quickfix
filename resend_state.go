@@ -24,7 +24,7 @@ type resendState struct {
 	resendRangeEnd        int
 }
 
-func (s resendState) String() string { return "Resend" }
+func (s resendState) String() string { return SessionStateResend }
 
 func (s resendState) Timeout(session *session, event internal.Event) (nextState sessionState) {
 	nextState = inSession{}.Timeout(session, event)
